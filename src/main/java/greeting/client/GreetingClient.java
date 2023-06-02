@@ -6,11 +6,9 @@ import com.proto.greeting.GreetingServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
+import org.checkerframework.checker.units.qual.C;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -65,6 +63,34 @@ public class GreetingClient {
         latch.await(3, TimeUnit.SECONDS);
     }
 
+    private static void doGreetEveryone(ManagedChannel channel) throws InterruptedException {
+        System.out.println("Enter doGreetEveryone");
+        GreetingServiceGrpc.GreetingServiceStub stub = GreetingServiceGrpc.newStub(channel);
+        CountDownLatch latch = new CountDownLatch(1);
+
+        StreamObserver<GreetingRequest> stream = stub.greetEveryone(new StreamObserver<GreetingResponse>() {
+            @Override
+            public void onNext(GreetingResponse response) {
+                System.out.println(response.getResult());
+            }
+
+            @Override
+            public void onError(Throwable t) {}
+
+            @Override
+            public void onCompleted() {
+                latch.countDown();
+            }
+        });
+
+        Arrays.asList("Hyunjoon", "Junghyun", "Hajin").forEach(name ->
+                stream.onNext(GreetingRequest.newBuilder().setFirstName(name).build())
+        );
+
+        stream.onCompleted();
+        latch.await(3, TimeUnit.SECONDS);
+    }
+
     public static void main(String[] args) throws InterruptedException {
         if (args.length == 0){
             System.out.println("Need one argument to work");
@@ -79,6 +105,7 @@ public class GreetingClient {
             case "greet": doGreet(channel); break;
             case "greet_many_times": doGreetManyTimes(channel); break;
             case "long_greet": doLongGreet(channel); break;
+            case "greet_everyone": doGreetEveryone(channel); break;
             default:
                 System.out.println("Keyword Invalid: " + args[0]);
         }
